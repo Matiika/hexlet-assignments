@@ -52,7 +52,7 @@ class Validator {
                 int minLength = field.getAnnotation(MinLength.class).minLength();
                 try {
                     field.setAccessible(true);
-                    if (field.get(address).toString().length() < 4) {
+                    if (field.get(address).toString().length() < minLength) {
                         if (notValidField.containsKey(field.getName())) {
                             notValidField.get(field.getName()).add("length less than 4");
                         } else {
