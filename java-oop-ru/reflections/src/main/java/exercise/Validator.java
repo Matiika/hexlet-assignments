@@ -49,13 +49,14 @@ class Validator {
             }
 
             if (field.isAnnotationPresent(MinLength.class)) {
+                int minLength = field.getAnnotation(MinLength.class).minLength();
                 try {
                     field.setAccessible(true);
                     if (field.get(address).toString().length() < 4) {
                         if (notValidField.containsKey(field.getName())) {
                             notValidField.get(field.getName()).add("length less than 4");
                         } else {
-                            notValidField.put(field.getName(), List.of("length less than 4"));
+                            notValidField.put(field.getName(), List.of("length less than " + minLength));
                         }
                     }
                 } catch (IllegalAccessException e) {
