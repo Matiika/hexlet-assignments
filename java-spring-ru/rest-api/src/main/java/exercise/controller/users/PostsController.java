@@ -31,13 +31,8 @@ public class PostsController {
     @ResponseStatus(HttpStatus.CREATED)
     public Post create(@PathVariable Integer id,
                                        @RequestBody Post postRequest) {
-        var post = new Post();
-        post.setUserId(id);
-        post.setTitle(postRequest.getTitle());
-        post.setSlug(postRequest.getSlug());
-        post.setBody(postRequest.getBody());
-        posts.add(post);
-
+        postRequest.setUserId(id);
+        posts.add(postRequest);
         return post;
     }
 }
