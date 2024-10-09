@@ -33,7 +33,7 @@ public class PostsController {
                                        @RequestBody Post postRequest) {
         postRequest.setUserId(id);
         posts.add(postRequest);
-        return post;
+        return postRequest;
     }
 }
 // END
