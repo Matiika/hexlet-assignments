@@ -64,93 +64,103 @@ class ApplicationTest {
 
 
     // BEGIN
-    @Test
-    public void testCreate() throws Exception {
-        var task = Instancio.of(Task.class)
+    private Task generateTestTask() {
+        return Instancio.of(Task.class)
                 .ignore(Select.field(Task::getId))
                 .ignore(Select.field(Task::getCreatedAt))
                 .ignore(Select.field(Task::getUpdatedAt))
                 .supply(Select.field(Task::getTitle), () -> faker.lorem().word())
                 .supply(Select.field(Task::getDescription), () -> faker.lorem().paragraph())
                 .create();
+    }
 
-        var request = post("/tasks")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(om.writeValueAsString(task));
+    @Test
+    public void testCreate() throws Exception {
+        var task = generateTestTask();
 
-        mockMvc.perform(request)
-                .andExpect(status().isCreated());
+        var response = mockMvc.perform(post("/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(task)))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse();
 
+        // Проверяем структуру JSON-ответа
+        assertThatJson(response.getContentAsString()).and(
+                json -> json.node("title").isEqualTo(task.getTitle()),
+                json -> json.node("description").isEqualTo(task.getDescription()),
+                json -> json.node("id").isNotNull(),
+                json -> json.node("createdAt").isNotNull()
+        );
+
+        // Проверяем сохранение в БД
         var taskFromRepo = taskRepository.findByTitle(task.getTitle()).get();
         assertThat(taskFromRepo.getTitle()).isEqualTo(task.getTitle());
+        assertThat(taskFromRepo.getDescription()).isEqualTo(task.getDescription());
     }
 
     @Test
     public void testShow() throws Exception {
-        var task = Instancio.of(Task.class)
-                .ignore(Select.field(Task::getId))
-                .ignore(Select.field(Task::getCreatedAt))
-                .ignore(Select.field(Task::getUpdatedAt))
-                .supply(Select.field(Task::getTitle), () -> faker.lorem().word())
-                .supply(Select.field(Task::getDescription), () -> faker.lorem().paragraph())
-                .create();
-
+        var task = generateTestTask();
         taskRepository.save(task);
 
-        var result = mockMvc.perform(get("/tasks/1"))
+        var response = mockMvc.perform(get("/tasks/" + task.getId()))
                 .andExpect(status().isOk())
-                .andReturn();
+                .andReturn()
+                .getResponse();
 
-        var body = result.getResponse().getContentAsString();
-
-        assertThat(body).contains(task.getTitle());
+        // Проверяем структуру JSON-ответа
+        assertThatJson(response.getContentAsString()).and(
+                json -> json.node("id").isEqualTo(task.getId()),
+                json -> json.node("title").isEqualTo(task.getTitle()),
+                json -> json.node("description").isEqualTo(task.getDescription())
+        );
     }
 
     @Test
     public void testUpdate() throws Exception {
-        var task = Instancio.of(Task.class)
-                .ignore(Select.field(Task::getId))
-                .ignore(Select.field(Task::getCreatedAt))
-                .ignore(Select.field(Task::getUpdatedAt))
-                .supply(Select.field(Task::getTitle), () -> faker.lorem().word())
-                .supply(Select.field(Task::getDescription), () -> faker.lorem().paragraph())
-                .create();
-
+        var task = generateTestTask();
         taskRepository.save(task);
 
-        var data = new HashMap<>();
-        data.put("title", "Mike");
-        data.put("description", "description");
+        var updatedData = new HashMap<String, String>();
+        updatedData.put("title", "Updated Title");
+        updatedData.put("description", "Updated Description");
 
-        var request = put("/tasks/" + task.getId())
-                .contentType(MediaType.APPLICATION_JSON)
-                // ObjectMapper конвертирует Map в JSON
-                .content(om.writeValueAsString(data));
+        var response = mockMvc.perform(put("/tasks/" + task.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(om.writeValueAsString(updatedData)))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
 
-        mockMvc.perform(request)
-                .andExpect(status().isOk());
+        // Проверяем структуру JSON-ответа
+        assertThatJson(response.getContentAsString()).and(
+                json -> json.node("id").isEqualTo(task.getId()),
+                json -> json.node("title").isEqualTo("Updated Title"),
+                json -> json.node("description").isEqualTo("Updated Description"),
+                json -> json.node("updatedAt").isNotNull()
+        );
 
-        task = taskRepository.findById(task.getId()).get();
-        assertThat(task.getTitle()).isEqualTo("Mike");
-        assertThat(task.getDescription()).isEqualTo("description");
+        // Проверяем обновление в БД
+        var updatedTask = taskRepository.findById(task.getId()).get();
+        assertThat(updatedTask.getTitle()).isEqualTo("Updated Title");
+        assertThat(updatedTask.getDescription()).isEqualTo("Updated Description");
     }
 
     @Test
     public void testDelete() throws Exception {
-        var task = Instancio.of(Task.class)
-                .ignore(Select.field(Task::getId))
-                .ignore(Select.field(Task::getCreatedAt))
-                .ignore(Select.field(Task::getUpdatedAt))
-                .supply(Select.field(Task::getTitle), () -> faker.lorem().word())
-                .supply(Select.field(Task::getDescription), () -> faker.lorem().paragraph())
-                .create();
-
+        var task = generateTestTask();
         taskRepository.save(task);
 
-        var result = mockMvc.perform(delete("/tasks/" + task.getId()))
+        mockMvc.perform(delete("/tasks/" + task.getId()))
                 .andExpect(status().isOk());
 
+        // Проверяем удаление из БД
         assertThat(taskRepository.findById(task.getId())).isEmpty();
+
+        // Проверяем, что повторный запрос возвращает 404
+        mockMvc.perform(get("/tasks/" + task.getId()))
+                .andExpect(status().isNotFound());
     }
     // END
 }
