@@ -21,17 +21,11 @@ import org.mapstruct.ReportingPolicy;
 )
 public abstract class ProductMapper {
 
-    Long map(Category category) {
-        return category != null ? category.getId() : null;
-    }
-
-
-
     @Mapping(target = "category", source = "categoryId")
     public abstract Product map(ProductCreateDTO dto);
 
-    @Mapping(target = "categoryId", expression = "java(model.getCategory() != null ? model.getCategory().getId() : null)")
-    @Mapping(target = "categoryName", expression = "java(model.getCategory() != null ? model.getCategory().getName() : null)")
+    @Mapping(target = "categoryId", source = "category.id")
+    @Mapping(target = "categoryName", source = "category.name")
     public abstract ProductDTO map(Product model);
 
     @Mapping(target = "category", source = "categoryId")
